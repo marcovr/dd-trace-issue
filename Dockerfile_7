@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/dotnet/sdk:7.0 as build
+WORKDIR /app
+
+# Create a new webapp referencing the bundled tracer
+RUN dotnet new mvc
+RUN dotnet add package Datadog.Trace.Bundle --version 2.44.0
+RUN dotnet publish --configuration Release --output ./out
+
+
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 as run
+WORKDIR /app
+
+COPY --from=build /app/out .
+RUN datadog/createLogPath.sh
+
+ENV DD_DOTNET_TRACER_HOME=/app/datadog
+ENV CORECLR_ENABLE_PROFILING=1
+ENV CORECLR_PROFILER={846F5F1C-F9AE-4B07-969E-05C26BC060D8}
+ENV CORECLR_PROFILER_PATH=/app/datadog/linux-x64/Datadog.Trace.ClrProfiler.Native.so
+
+ENTRYPOINT ["dotnet", "app.dll"]

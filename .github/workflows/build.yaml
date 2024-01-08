@@ -1,0 +1,41 @@
+name: debug
+
+on: [push]
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: |
+          docker build -t app:7 -f Dockerfile_7 .
+          docker build -t app:8 -f Dockerfile_8 .
+
+      - name: NET 7 with COMPlus_EnableDiagnostics=0
+        run: |
+          docker run -d -e COMPlus_EnableDiagnostics=0 --name app app:7
+          sleep 2 # wait for host to start
+          docker exec -it app datadog/dd-dotnet.sh check process 1
+          docker rm -f app
+
+      - name: NET 7 with default COMPlus_EnableDiagnostics
+        run: |
+          docker run -d --name app app:7
+          sleep 2 # wait for host to start
+          docker exec -it app datadog/dd-dotnet.sh check process 1
+          docker rm -f app
+
+      - name: NET 8 with COMPlus_EnableDiagnostics=0
+        run: |
+          docker run -d -e COMPlus_EnableDiagnostics=0 --name app app:8
+          sleep 2 # wait for host to start
+          docker exec -it app datadog/dd-dotnet.sh check process 1
+          docker rm -f app
+
+      - name: NET 8 with default COMPlus_EnableDiagnostics
+        run: |
+          docker run -d --name app app:8
+          sleep 2 # wait for host to start
+          docker exec -it app datadog/dd-dotnet.sh check process 1
+          docker rm -f app
